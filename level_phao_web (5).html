@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Level Pháo</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Level Pháo">
+<style>
+body { font-family: sans-serif; background: #eef2f5; padding: 20px; }
+.container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.input-group { margin-bottom: 12px; }
+input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #aaa; font-size:16px; }
+button { width: 100%; min-height: 60px; padding: 12px; background: #2563eb; color: white; font-size: 18px; border-radius: 12px; border: none; cursor: pointer; touch-action: manipulation; }
+.result { margin-top: 20px; padding: 14px; background: #f8fafc; border-radius: 12px; border: 1px solid #ccc; word-break: break-word; }
+pre.log { white-space: pre-wrap; font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="container">
+<h2>Level Pháo</h2>
+<div class="input-group"><label>Đá</label><input type="number" id="stone" value="0"></div>
+<div class="input-group"><label>Gỗ</label><input type="number" id="wood" value="0"></div>
+<div class="input-group"><label>Quặng</label><input type="number" id="ore" value="0"></div>
+<div class="input-group"><label>Hộp pháo</label><input type="number" id="boxes" value="0"></div>
+<button id="btnCompute">Tính</button>
+<div id="output" class="result" style="display:none"></div>
+</div>
+
+<script>
+// simulate function
+function simulate(S,W,Q,B,lv){
+    let stone=S,wood=W,ore=Q,box=B,log=[];
+    const needStone=1260*lv, needWood=340*lv, needOre=130*lv;
+    let need,use,stoneNeed,possible;
+
+    need=Math.max(0,needOre-ore); use=Math.min(box,need);
+    if(use>0) log.push(`Dùng ${use} hộp → +${use} quặng`); ore+=use; box-=use;
+
+    need=Math.max(0,needWood-wood); use=Math.min(box,Math.ceil(need/4));
+    if(use>0) log.push(`Dùng ${use} hộp → +${use*4} gỗ`); wood+=use*4; box-=use;
+
+    if(box>0) log.push(`Dùng ${box} hộp → +${box*20} đá`); stone+=box*20; box=0;
+
+    need=Math.max(0,needOre-ore); possible=Math.floor(wood/4); use=Math.min(need,possible);
+    if(use>0) log.push(`Đổi ${use*4} gỗ → +${use} quặng`); wood-=use*4; ore+=use;
+
+    need=Math.max(0,needOre-ore); stoneNeed=need*20; if(need>0) log.push(`Đổi ${stoneNeed} đá → +${need} quặng`);
+    if(stone<stoneNeed) return {ok:false,log}; stone-=stoneNeed; ore+=need;
+
+    need=Math.max(0,needWood-wood); stoneNeed=need*5; if(need>0) log.push(`Đổi ${stoneNeed} đá → +${need} gỗ`);
+    if(stone<stoneNeed) return {ok:false,log}; stone-=stoneNeed; wood+=need;
+
+    if(stone<needStone||wood<needWood||ore<needOre) return {ok:false,log};
+    stone-=needStone; wood-=needWood; ore-=needOre;
+
+    return {ok:true,log,remaining:{stone,wood,ore}};
+}
+
+// computeLv
+function computeLv(){
+    let S=Number(document.getElementById('stone').value)||0;
+    let W=Number(document.getElementById('wood').value)||0;
+    let Q=Number(document.getElementById('ore').value)||0;
+    let B=Number(document.getElementById('boxes').value)||0;
+
+    let lo=0, hi=20000, lastLog=[], lastRemaining=null;
+    while(lo<hi){
+        let mid=Math.floor((lo+hi+1)/2);
+        let result=simulate(S,W,Q,B,mid);
+        if(result.ok){ lo=mid; lastLog=result.log; lastRemaining=result.remaining; }
+        else hi=mid-1;
+    }
+
+    const out=document.getElementById('output'); out.style.display='block';
+    if(lastRemaining){
+        out.innerHTML=`
+            <b>Cấp tối đa:</b> ${lo}<br>
+            <b>Tổng điểm:</b> ${lo*556}<br><br>
+            <b>Các bước đổi:</b><br>
+            <pre class="log">${lastLog.join('\n')}</pre>
+            <br><b>Còn lại:</b><br>
+            Đá: ${lastRemaining.stone} | Gỗ: ${lastRemaining.wood} | Quặng: ${lastRemaining.ore}
+        `;
+    } else { out.innerHTML="Không đủ tài nguyên để nâng cấp"; }
+}
+
+const btn=document.getElementById('btnCompute');
+btn.addEventListener('click',computeLv);
+btn.addEventListener('touchstart',computeLv);
+</script>
+
+<script src="sw.js"></script>
+</body>
+</html>
